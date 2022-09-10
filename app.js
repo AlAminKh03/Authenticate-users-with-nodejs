@@ -5,6 +5,7 @@ const mongoose = require('mongoose')
 require("dotenv").config()
 const dbURL = process.env.MONGO_URL
 const User = require("./models/user.model")
+const md5 = require('md5')
 const PORT = 5000
 
 
@@ -23,7 +24,9 @@ app.use(express.json())
 
 app.post("/register", async (req, res) => {
     try {
-        const newUser = new User(req.body)
+        const email = req.body.email;
+        const password = md5(req.body.password)
+        const newUser = new User({ email, password })
         await newUser.save()
         res.status(201).json(newUser)
     }
@@ -34,7 +37,8 @@ app.post("/register", async (req, res) => {
 
 app.post("/login", async (req, res) => {
     try {
-        const { email, password } = req.body
+        const email = req.body.email;
+        const password = md5(req.body.password)
         const userExist = await User.findOne({ email: email })
         if (userExist && userExist.password === password) {
             res.status(201).json({ message: "Logged in" })
