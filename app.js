@@ -5,8 +5,9 @@ const mongoose = require('mongoose')
 require("dotenv").config()
 const dbURL = process.env.MONGO_URL
 const User = require("./models/user.model")
-const md5 = require('md5')
 const PORT = 5000
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 
 mongoose.connect(dbURL)
@@ -24,31 +25,39 @@ app.use(express.json())
 
 app.post("/register", async (req, res) => {
     try {
-        const email = req.body.email;
-        const password = md5(req.body.password)
-        const newUser = new User({ email, password })
-        await newUser.save()
-        res.status(201).json(newUser)
+        bcrypt.hash(req.body.password, saltRounds, async function (err, hash) {
+
+            const email = req.body.email
+            const newUser = new User({ email, password: hash })
+            await newUser.save()
+            res.status(201).json(newUser)
+        });
+
     }
     catch (error) {
-        res.status(403).json(error)
+        res.status(403).json({ error })
     }
 })
 
 app.post("/login", async (req, res) => {
     try {
         const email = req.body.email;
-        const password = md5(req.body.password)
         const userExist = await User.findOne({ email: email })
-        if (userExist && userExist.password === password) {
-            res.status(201).json({ message: "Logged in" })
+
+        if (userExist) {
+            bcrypt.compare(req.body.password, userExist.password, function (err, result) {
+                if (result) {
+                    res.status(201).json({ message: "Logged in" })
+                }
+                else {
+                    res.status(401).json({ message: "User not found" })
+                }
+            });
         }
-        else {
-            res.status(401).json({ message: "User not found" })
-        }
+
     }
     catch (error) {
-        res.status(403).json(error)
+        res.status(403).json({ error })
     }
 })
 
